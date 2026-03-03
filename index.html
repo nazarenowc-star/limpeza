@@ -656,7 +656,7 @@
           </div>
           <div class="status-dot">
             <span class="dot fail" id="sb-dot"></span>
-            <span>Supabase</span>
+            <span>GitHub</span>
           </div>
           <div class="status-dot">
             <span class="dot fail" id="cvs-dot"></span>
@@ -1084,122 +1084,66 @@
     </div>
 
     <!-- ABA NUVEM -->
-    <div id="tab-cloud" class="tab-pane fade">
+    <div 
+id="tab-cloud" class="tab-pane fade">
       <div class="card-premium">
         <div class="card-header">
           <h5 class="mb-0">
             <i class="fa-solid fa-cloud me-2"></i>
-            Configuração da Nuvem
+            Configuração da Nuvem (GitHub Gist)
           </h5>
         </div>
         <div class="card-body">
           <div class="alert alert-info">
             <i class="fa-solid fa-info-circle me-2"></i>
-            <strong>Tabela na nuvem:</strong> public.limpezas_v6_2
-          </div>
-          
-          <div class="row g-3 mb-4">
-            <div class="col-md-6">
-              <label class="form-label fw-bold">SUPABASE_URL</label>
-              <input class="form-control form-control-premium" id="sb-url" 
-                     placeholder="https://xxxx.supabase.co"
-                     value="https://rnrltabsqnfsxmguntxw.supabase.co">
-            </div>
-            <div class="col-md-6">
-              <label class="form-label fw-bold">SUPABASE_ANON_KEY</label>
-              <input class="form-control form-control-premium" id="sb-key" 
-                     placeholder="eyJhbGciOi..."
-                     value="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJucmx0YWJzcW5mc3htZ3VudHh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTczNzAzMTYsImV4cCI6MjA3Mjk0NjMxNn0.Wxxjfsi38pT6rYt5kmAEs_j87vAZtKoqAtmO3fxOHFc">
-            </div>
-          </div>
-          
-          <div class="d-flex flex-wrap gap-2 mb-4">
-            <button class="btn btn-premium btn-premium-primary" id="btn-cloud-connect">
-              <i class="fa-solid fa-plug"></i>
-              Conectar
-            </button>
-            <button class="btn btn-premium btn-premium-secondary" id="btn-cloud-savekeys">
-              <i class="fa-solid fa-save"></i>
-              Salvar Credenciais
-            </button>
-            <button class="btn btn-premium btn-premium-secondary" id="btn-cloud-clearkeys">
-              <i class="fa-solid fa-eraser"></i>
-              Limpar Credenciais
-            </button>
-            <button class="btn btn-premium btn-premium-secondary" id="btn-cloud-push">
-              <i class="fa-solid fa-cloud-arrow-up"></i>
-              Subir
-            </button>
-            <button class="btn btn-premium btn-premium-secondary" id="btn-cloud-pull">
-              <i class="fa-solid fa-cloud-arrow-down"></i>
-              Baixar
-            </button>
-            <button class="btn btn-premium btn-premium-secondary" id="btn-cloud-list">
-              <i class="fa-solid fa-list"></i>
-              Listar
-            </button>
-            <button class="btn btn-premium btn-premium-secondary" id="btn-cloud-rt">
-              <i class="fa-solid fa-signal"></i>
-              Realtime
-            </button>
-            <button class="btn btn-premium btn-premium-secondary" id="btn-cloud-ping">
-              <i class="fa-solid fa-bug"></i>
-              Testar
-            </button>
+            <strong>Como funciona:</strong> este app fica no GitHub Pages e sincroniza os dados via <b>GitHub Gist</b> (JSON).<br/>
+            Você precisa de um <b>Token</b> do GitHub com permissão de <b>Gist</b> (fine-grained recomendado).
           </div>
 
-          <div class="row g-2 align-items-end mb-2">
-            <div class="col-md-3">
-              <label class="form-label">Data inicial</label>
-              <input type="date" id="cloud-ini" class="form-control form-control-premium">
-            </div>
-            <div class="col-md-3">
-              <label class="form-label">Data final</label>
-              <input type="date" id="cloud-fim" class="form-control form-control-premium">
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              <label class="form-label fw-bold">GITHUB_TOKEN (PAT)</label>
+              <input class="form-control form-control-premium" id="gh-token"
+                     placeholder="ghp_... (token com permissão de Gist)" value="">
+              <div class="form-text">⚠️ Este token fica salvo no navegador (localStorage). Não compartilhe este HTML com o token preenchido.</div>
             </div>
             <div class="col-md-6">
-              <label class="form-label">Regiões (botões)</label><br/>
-              <input type="checkbox" class="btn-check regc" id="rc-sul1" value="sul1" checked>
-              <label class="btn btn-outline-secondary btn-chip" for="rc-sul1">Sul 1</label>
-              <input type="checkbox" class="btn-check regc" id="rc-sul2" value="sul2" checked>
-              <label class="btn btn-outline-secondary btn-chip" for="rc-sul2">Sul 2</label>
-              <input type="checkbox" class="btn-check regc" id="rc-norte" value="norte" checked>
-              <label class="btn btn-outline-secondary btn-chip" for="rc-norte">Norte</label>
-              <input type="checkbox" class="btn-check regc" id="rc-centro" value="centro" checked>
-              <label class="btn btn-outline-secondary btn-chip" for="rc-centro">Centro</label>
-              <input type="checkbox" class="btn-check regc" id="rc-faz" value="fazendao" checked>
-              <label class="btn btn-outline-secondary btn-chip" for="rc-faz">Fazendão</label>
+              <label class="form-label fw-bold">GIST_ID</label>
+              <input class="form-control form-control-premium" id="gh-gist"
+                     placeholder="ex: 0123456789abcdef0123456789abcdef" value="">
+              <div class="form-text">Abra o Gist no GitHub e copie o ID da URL.</div>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-bold">ARQUIVO JSON NO GIST</label>
+              <input class="form-control form-control-premium" id="gh-file"
+                     placeholder="ex: limpeza_db.json" value="limpeza_db.json">
+              <div class="form-text">O app vai ler e gravar neste arquivo dentro do Gist.</div>
+            </div>
+
+            <div class="col-md-6 d-flex align-items-end gap-2 flex-wrap">
+              <button class="btn btn-premium btn-premium-primary" id="btn-gh-save" type="button">
+                <i class="fa-solid fa-floppy-disk"></i>Salvar Credenciais
+              </button>
+              <button class="btn btn-premium btn-premium-secondary" id="btn-gh-pull" type="button">
+                <i class="fa-solid fa-cloud-arrow-down"></i>Puxar da Nuvem
+              </button>
+              <button class="btn btn-premium btn-premium-secondary" id="btn-gh-push" type="button">
+                <i class="fa-solid fa-cloud-arrow-up"></i>Enviar p/ Nuvem
+              </button>
+              <button class="btn btn-premium btn-premium-secondary" id="btn-gh-clear" type="button">
+                <i class="fa-solid fa-eraser"></i>Limpar
+              </button>
             </div>
           </div>
-          
-          <div class="mb-2">
-            <label class="form-label">Equipamentos (por região, botões)</label><br/>
-            <span id="equip-cloud-wrap" class="d-inline-block"></span>
-          </div>
-          
-          <div class="table-responsive">
-            <table class="table table-hover">
-              <thead>
-                <tr>
-                  <th>OM</th>
-                  <th>DATA</th>
-                  <th>ÁREA</th>
-                  <th>TAG</th>
-                  <th>SISTEMA</th>
-                  <th>REGIÃO</th>
-                  <th>ESPECIFICAÇÃO</th>
-                  <th>Status</th>
-                  <th>Arquivado</th>
-                </tr>
-              </thead>
-              <tbody id="tb-cloud"></tbody>
-            </table>
+
+          <div class="alert alert-warning mb-0">
+            <i class="fa-solid fa-triangle-exclamation me-2"></i>
+            <b>Dica:</b> crie um <b>Gist privado</b> e use um token fine-grained com acesso apenas a <b>Gists</b>. Assim você sincroniza PC e celular sem servidor externo.
           </div>
         </div>
       </div>
     </div>
-  </div>
-</div>
 
 <!-- Contêiner offscreen do relatório -->
 <div id="relatorioTextWrap">
@@ -1211,169 +1155,6 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import {
-  getFirestore,
-  doc,
-  setDoc,
-  getDoc,
-  onSnapshot,
-  serverTimestamp
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-/**
- * Firebase Cloud Sync (GitHub Pages friendly)
- * - Persists data in Firestore
- * - Realtime updates across devices
- * - Debounced push to avoid excessive writes
- */
-const firebaseConfig = {
-  apiKey: "AIzaSyD95lw4T57c6nYSrlvdEoK20GtQR-dBg5g",
-  authDomain: "limpeza-c745c.firebaseapp.com",
-  projectId: "limpeza-c745c",
-  storageBucket: "limpeza-c745c.firebasestorage.app",
-  messagingSenderId: "192675928694",
-  appId: "1:192675928694:web:f1eef86c50fa7b9252dd57"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-// One shared document for the whole app
-const DOC = doc(db, "limpeza", "programacao_semanal_v1");
-
-// Stable client id to avoid self-loop confusion in UI
-const CID_KEY = "LIMPEZA_FIREBASE_CLIENT_ID";
-let clientId = localStorage.getItem(CID_KEY);
-if (!clientId) {
-  clientId = (crypto?.randomUUID ? crypto.randomUUID() : ("cid_" + Math.random().toString(16).slice(2) + Date.now()));
-  localStorage.setItem(CID_KEY, clientId);
-}
-
-let lastRemoteVersion = 0; // unix ms
-let pushing = false;
-let pushTimer = null;
-let pendingReasons = new Set();
-
-function setState(txt) {
-  const el = document.getElementById("cloud-state");
-  if (!el) return;
-  el.textContent = txt;
-  el.className = "cloud-state";
-  if (txt === "Conectado" || txt === "Sincronizado") el.classList.add("connected");
-  if (txt === "Offline" || txt.startsWith("Erro")) el.classList.add("disconnected");
-}
-
-function safeClone(v) {
-  try { return JSON.parse(JSON.stringify(v ?? null)); } catch { return v; }
-}
-
-async function pullOnce() {
-  setState("Conectando…");
-  const snap = await getDoc(DOC);
-  if (!snap.exists()) {
-    setState("Conectado");
-    return null;
-  }
-  const data = snap.data() || {};
-  const version = (data.version_ms || 0);
-  lastRemoteVersion = Math.max(lastRemoteVersion, version);
-  setState("Sincronizado");
-  return data;
-}
-
-async function pushNow(reason="") {
-  if (pushing) return;
-  const hooks = window.__limpezaHooks;
-  if (!hooks || !hooks.getCur || !hooks.getHist) return;
-
-  pushing = true;
-  try {
-    setState("Sincronizando…");
-
-    const payload = {
-      cur: safeClone(hooks.getCur() || []),
-      hist: safeClone(hooks.getHist() || []),
-      meta: {
-        clientId,
-        reason: reason || "update",
-        updatedAt: Date.now()
-      },
-      version_ms: Date.now(),
-      server_updated_at: serverTimestamp()
-    };
-
-    await setDoc(DOC, payload, { merge: true });
-    lastRemoteVersion = Math.max(lastRemoteVersion, payload.version_ms);
-    setState("Sincronizado");
-  } catch (e) {
-    console.error("Firebase push error:", e);
-    setState("Erro Sync");
-  } finally {
-    pushing = false;
-  }
-}
-
-function schedulePush(reason="") {
-  pendingReasons.add(reason || "update");
-  if (pushTimer) clearTimeout(pushTimer);
-  pushTimer = setTimeout(() => {
-    const r = Array.from(pendingReasons).join(",") || "update";
-    pendingReasons.clear();
-    pushNow(r);
-  }, 900); // debounce
-}
-
-// Expose cloud API to non-module scripts
-window.firebaseCloud = {
-  schedulePush,
-  pushNow,
-  pullOnce,
-  setState
-};
-
-// Realtime subscription
-try {
-  setState("Conectado");
-  onSnapshot(DOC, (snap) => {
-    if (!snap.exists()) return;
-    const data = snap.data() || {};
-    const version = (data.version_ms || 0);
-    const meta = data.meta || {};
-
-    // Ignore older versions
-    if (version <= lastRemoteVersion) return;
-
-    // If update is from this same client, just advance version and stop (already applied locally)
-    if (meta.clientId && meta.clientId === clientId) {
-      lastRemoteVersion = version;
-      setState("Sincronizado");
-      return;
-    }
-
-    lastRemoteVersion = version;
-
-    // Apply remote data to local app
-    const hooks = window.__limpezaHooks;
-    if (!hooks || !hooks.setCur || !hooks.setHist) return;
-
-    hooks.setCur(Array.isArray(data.cur) ? data.cur : []);
-    hooks.setHist(Array.isArray(data.hist) ? data.hist : []);
-
-    // Ask app to re-render
-    try { hooks.refresh?.(); } catch {}
-    setState("Sincronizado");
-  }, (err) => {
-    console.error("Firebase onSnapshot error:", err);
-    setState("Erro Realtime");
-  });
-} catch (e) {
-  console.error("Firebase init error:", e);
-  setState("Erro Firebase");
-}
-</script>
-
 <script>
 function $(id) { return document.getElementById(id); }
 function setDot(id, ok) { 
@@ -1477,7 +1258,7 @@ document.addEventListener('DOMContentLoaded', function() {
 try {
   setDot('cht-dot', !!window.Chart);
   setDot('xslx-dot', !!window.XLSX);
-  setDot('sb-dot', false);
+  setDot('sb-dot', true);
   setDot('cvs-dot', !!window.html2canvas);
 
   var TABLE = 'limpezas_v6_2';
@@ -1600,9 +1381,10 @@ function loadAll() {
     return _memCur.slice();
   }
 }
-function saveAll(v){ _memCur = Array.isArray(v) ? v : [];
+function saveAll(v) {
+  _memCur = Array.isArray(v) ? v : [];
   _lsSet(LS_CUR, JSON.stringify(_memCur));
- if (window.firebaseCloud && window.firebaseCloud.schedulePush) { window.firebaseCloud.schedulePush("cur"); } }
+}
 
 function loadHist() {
   try {
@@ -1615,23 +1397,9 @@ function loadHist() {
     return _memHist.slice();
   }
 }
-function saveHist(v){ _memHist = Array.isArray(v) ? v : [];
+function saveHist(v) {
+  _memHist = Array.isArray(v) ? v : [];
   _lsSet(LS_HIS, JSON.stringify(_memHist));
- if (window.firebaseCloud && window.firebaseCloud.schedulePush) { window.firebaseCloud.schedulePush("hist"); } 
-
-            // --- Cloud hooks (Firebase) ---
-            window.__limpezaHooks = {
-                getCur: function(){ return loadAll(); },
-                getHist: function(){ return loadHist(); },
-                setCur: function(arr){ saveAll(arr); },
-                setHist: function(arr){ saveHist(arr); },
-                refresh: function(){
-                    try { renderTable && renderTable(); } catch(e) {}
-                    try { renderHist && renderHist(); } catch(e) {}
-                    try { rebuildEquipCheckboxes && rebuildEquipCheckboxes(); } catch(e) {}
-                    try { updateCharts && updateCharts(); } catch(e) {}
-                }
-            };
 }
 
 function loadAuto() {
@@ -1656,59 +1424,21 @@ function loadKeys() {
 // =========================
 var _autoCloudPulled = false;
 
-function setCloudState(label) {
-  var el = $('cloud-state');
-  if (el) el.textContent = label || 'Offline';
-}
-
-function autoConnectAndPullOnce() {
+// Compat: sincronização automática agora é via GitHub Gist (sem Supabase)
+function autoConnectAndPullOnce(){
   if (_autoCloudPulled) return;
-  if (!window.supabase) { setCloudState('Supabase OFF'); return; }
-
-  var u = ($('sb-url') && $('sb-url').value ? $('sb-url').value.trim() : '');
-  var k = ($('sb-key') && $('sb-key').value ? $('sb-key').value.trim() : '');
-
-  if ((!u || !k)) {
-    var kk = loadKeys();
-    u = u || (kk.url || '');
-    k = k || (kk.key || '');
-    if ($('sb-url') && u) $('sb-url').value = u;
-    if ($('sb-key') && k) $('sb-key').value = k;
-  }
-
-  if (!u || !k) { setCloudState('Offline'); return; }
-
-  try {
-    supa = supabase.createClient(u, k, { auth: { persistSession: false } });
-    setCloudState('Conectado');
-  } catch (e) {
-    setCloudState('Erro Conectar');
-    return;
-  }
-
   _autoCloudPulled = true;
-  supa.from(TABLE).select('*').then(function(ret) {
-    if (ret.error) { 
-      console.warn('Auto pull erro:', ret.error);
-      setCloudState('Sem acesso');
-      return; 
+  try{
+    if (typeof ghPullApply === 'function') {
+      ghPullApply().then(function(){
+        if (typeof ghStartPolling === 'function') ghStartPolling();
+      });
     }
-    var data = ret.data || [], atuais = [], hist = [];
-    for (var i = 0; i < data.length; i++) {
-      var r = data[i];
-      (r.is_archived ? hist : atuais).push(mapCloudToLocal(r));
-    }
-    saveAll(atuais);
-    saveHist(hist);
-    renderTable();
-    renderHist();
-    updateCharts();
-      autoConnectAndPullOnce();
-setCloudState('Sincronizado');
-  });
+  }catch(e){}
 }
 
 var parsed = [];
+
 
   function renderTable() {
     var tb = $('tb'); 
@@ -2597,211 +2327,209 @@ var parsed = [];
   });
 
   // Nuvem (mantida, sem mudanças de conexão)
-  var supa = null, sub = null, cloudCache = [];
   
-  function setCloudState(t) { 
-    var el = $('cloud-state'); 
-    if (el) {
-      el.textContent = t;
-      el.className = 'cloud-state';
-      if (t === 'Conectado') el.className += ' connected';
-      else if (t === 'Offline') el.className += ' disconnected';
-    }
-  }
-  
-  function mapLocalToCloud(r, isArchived) {
-    return { 
-      om: r.OM || null, 
-      data: r.DATA || null, 
-      mes: r['MÊS'] || null, 
-      dia: r.DIA || null, 
-      area: r['ÁREA'] || null, 
-      tag: r.TAG || null, 
-      especificacao: r['ESPECIFICAÇÃO'] || null, 
-      status: r.STATUS || null, 
-      observacoes: r.OBSERVAÇÕES || null, 
-      sistema: deriveSistema(r.TAG, r['ÁREA'], r.SISTEMA) || null, 
-      regiao: (r.REGIAO || deriveRegiao(r['ÁREA']) || null), 
-      is_archived: !!isArchived, 
-      archived_at: isArchived ? (r.ARQUIVADO_EM || new Date().toISOString()) : null, 
-      updated_at: new Date().toISOString() 
+  // =========================
+  // GitHub Gist Cloud (sincronização automática entre PC e celular sem Supabase)
+  // - Site continua no GitHub Pages (estático)
+  // - Dados são salvos em um Gist (JSON) via API do GitHub
+  // - Precisa de GitHub Token com permissão de Gist
+  // =========================
+  var _ghTimerPush = null;
+  var _ghTimerPoll = null;
+  var _ghSuppressPush = false;
+  var _ghLastUpdatedAt = null;
+
+  var LS_GH_TOKEN = 'gh_token_limpeza_v7';
+  var LS_GH_GIST  = 'gh_gist_limpeza_v7';
+  var LS_GH_FILE  = 'gh_file_limpeza_v7';
+
+  function ghLoadKeys(){
+    return {
+      token: (_lsGet(LS_GH_TOKEN) || ''),
+      gist:  (_lsGet(LS_GH_GIST)  || ''),
+      file:  (_lsGet(LS_GH_FILE)  || 'limpeza_db.json')
     };
   }
-  
-  function mapCloudToLocal(r) {
-    return { 
-      OM: r.om || '', 
-      DATA: r.data || '', 
-      'MÊS': r.mes || '', 
-      DIA: r.dia || '', 
-      'ÁREA': r.area || '', 
-      TAG: r.tag || '', 
-      'SISTEMA': r.sistema || deriveSistema(r.tag, r.area, r.sistema) || '', 
-      REGIAO: r.regiao || deriveRegiao(r.area) || '', 
-      'ESPECIFICAÇÃO': r.especificacao || '', 
-      STATUS: r.status || 'Pendente', 
-      OBSERVAÇÕES: r.observacoes || '' 
+  function ghSaveKeys(token, gist, file){
+    _lsSet(LS_GH_TOKEN, token || '');
+    _lsSet(LS_GH_GIST, gist || '');
+    _lsSet(LS_GH_FILE, file || 'limpeza_db.json');
+  }
+  function ghClearKeys(){
+    _lsRem(LS_GH_TOKEN); _lsRem(LS_GH_GIST); _lsRem(LS_GH_FILE);
+  }
+  function ghHasCreds(){
+    var k = ghLoadKeys();
+    return !!(k.token && k.gist);
+  }
+
+  function ghHeaders(token){
+    // Bearer funciona bem para fine-grained tokens
+    return {
+      'Accept': 'application/vnd.github+json',
+      'Authorization': 'Bearer ' + token
     };
   }
 
-  on($('btn-cloud-connect'), 'click', function() {
-    try {
-      if (!window.supabase) { alert('Biblioteca Supabase não carregou.'); return; }
-      var url = $('sb-url').value.trim(), key = $('sb-key').value.trim();
-      if (!url || !key) { alert('Informe SUPABASE_URL e ANON KEY.'); return; }
-      supa = supabase.createClient(url, key, { auth: { persistSession: false } });
-      setCloudState('Conectado');
-      alert('Conectado.');
-    } catch (err) { 
-      alert('Erro conectar: ' + (err.message || err)); 
+  function ghLog(msg){
+    try{
+      var el = $('controles-log');
+      if (!el) return;
+      var now = new Date().toLocaleString('pt-BR');
+      el.innerHTML = '<div style="margin-bottom:6px"><strong>['+now+']</strong> '+ msg +'</div>' + el.innerHTML;
+    }catch(e){}
+  }
+
+  function ghParsePayload(content){
+    // Payload esperado:
+    // { cur: [...], hist: [...], meta: { updatedAt: ISO } }
+    try{
+      var obj = JSON.parse(content || '{}');
+      if (Array.isArray(obj)) {
+        return { cur: obj, hist: [], meta: { updatedAt: new Date().toISOString() } };
+      }
+      return {
+        cur: Array.isArray(obj.cur) ? obj.cur : [],
+        hist: Array.isArray(obj.hist) ? obj.hist : [],
+        meta: obj.meta || { updatedAt: new Date().toISOString() }
+      };
+    }catch(e){
+      return { cur: [], hist: [], meta: { updatedAt: new Date().toISOString() } };
     }
-  });
-  
-  on($('btn-cloud-savekeys'), 'click', function() { 
-    try { 
-      saveKeys($('sb-url').value.trim(), $('sb-key').value.trim()); 
-      alert('Credenciais salvas.'); 
-    } catch (err) { 
-      alert('Erro salvar: ' + (err.message || err)); 
-    } 
-  });
-  
-  on($('btn-cloud-clearkeys'), 'click', function() { 
-    try { 
-      clearKeys(); 
-      $('sb-url').value = ''; 
-      $('sb-key').value = ''; 
-      alert('Credenciais limpas.'); 
-    } catch (err) { 
-      alert('Erro limpar: ' + (err.message || err)); 
-    } 
-  });
-  
-  on($('btn-cloud-push'), 'click', function() {
-    try {
-      if (!supa) { alert('Conecte primeiro.'); return; }
-      var at = loadAll().map(function(r) { return mapLocalToCloud(r, false); });
-      var hi = loadHist().map(function(r) { return mapLocalToCloud(r, true); });
-      supa.from(TABLE).upsert(at.concat(hi), { onConflict: 'om,tag,data' }).then(function(ret) {
-        if (ret.error) { alert('Erro no envio: ' + (ret.error.message || ret.error)); return; }
-        alert('Enviado para a nuvem.');
-      });
-    } catch (err) { 
-      alert('Erro push: ' + (err.message || err)); 
-    }
-  });
-  
-  on($('btn-cloud-pull'), 'click', function() {
-    try {
-      if (!supa) { alert('Conecte primeiro.'); return; }
-      supa.from(TABLE).select('*').then(function(ret) {
-        if (ret.error) { alert('Erro ao baixar: ' + (ret.error.message || ret.error)); return; }
-        var data = ret.data || [], atuais = [], hist = [];
-        for (var i = 0; i < data.length; i++) { 
-          var r = data[i]; 
-          (r.is_archived ? hist : atuais).push(mapCloudToLocal(r)); 
+  }
+
+  function ghBuildPayload(){
+    return {
+      cur: loadAll(),
+      hist: loadHist(),
+      meta: { updatedAt: new Date().toISOString(), app: 'samarco_limpeza_v7_gist' }
+    };
+  }
+
+  function ghFetchGist(){
+    var k = ghLoadKeys();
+    if (!k.token || !k.gist) return Promise.reject(new Error('Credenciais GitHub ausentes.'));
+    return fetch('https://api.github.com/gists/' + encodeURIComponent(k.gist), {
+      method: 'GET',
+      headers: ghHeaders(k.token)
+    }).then(function(r){
+      if (!r.ok) throw new Error('GitHub GET falhou: ' + r.status);
+      return r.json();
+    });
+  }
+
+  function ghPullApply(){
+    if (!ghHasCreds()) { setCloudState('Offline'); return Promise.resolve(false); }
+    setCloudState('Baixando...');
+    return ghFetchGist().then(function(g){
+      var k = ghLoadKeys();
+      var f = (g && g.files && g.files[k.file]) ? g.files[k.file] : null;
+      if (!f || typeof f.content !== 'string') {
+        // Se não existir arquivo ainda, cria vazio e sobe
+        ghLog('Arquivo "'+k.file+'" não encontrado no Gist. Criando um novo vazio...');
+        _ghSuppressPush = true;
+        saveAll(loadAll()); // mantém local
+        saveHist(loadHist());
+        _ghSuppressPush = false;
+        return ghPushNow(true).then(function(){ setCloudState('Sincronizado'); return true; });
+      }
+
+      _ghLastUpdatedAt = g.updated_at || null;
+
+      var payload = ghParsePayload(f.content);
+      _ghSuppressPush = true;
+      saveAll(payload.cur);
+      saveHist(payload.hist);
+      _ghSuppressPush = false;
+
+      try{ renderTable(); }catch(e){}
+      try{ renderHist(); }catch(e){}
+      try{ rebuildEquipCheckboxes(); }catch(e){}
+      try{ updateCharts(); }catch(e){}
+
+      setCloudState('Sincronizado');
+      ghLog('Pull OK: ' + payload.cur.length + ' atual / ' + payload.hist.length + ' histórico.');
+      return true;
+    }).catch(function(err){
+      console.warn(err);
+      setCloudState('Erro Pull');
+      ghLog('<span style="color:#b91c1c">Erro Pull:</span> ' + (err.message || err));
+      return false;
+    });
+  }
+
+  function ghPushNow(silent){
+    if (!ghHasCreds()) { if(!silent) ghLog('Sem credenciais para enviar.'); return Promise.resolve(false); }
+    var k = ghLoadKeys();
+    var body = {
+      files: {}
+    };
+    body.files[k.file] = { content: JSON.stringify(ghBuildPayload(), null, 2) };
+
+    setCloudState('Enviando...');
+    return fetch('https://api.github.com/gists/' + encodeURIComponent(k.gist), {
+      method: 'PATCH',
+      headers: Object.assign({ 'Content-Type': 'application/json' }, ghHeaders(k.token)),
+      body: JSON.stringify(body)
+    }).then(function(r){
+      if (!r.ok) throw new Error('GitHub PATCH falhou: ' + r.status);
+      return r.json();
+    }).then(function(g){
+      _ghLastUpdatedAt = g.updated_at || _ghLastUpdatedAt;
+      setCloudState('Sincronizado');
+      if (!silent) ghLog('Push OK (' + (g.updated_at || 'ok') + ').');
+      return true;
+    }).catch(function(err){
+      console.warn(err);
+      setCloudState('Erro Push');
+      ghLog('<span style="color:#b91c1c">Erro Push:</span> ' + (err.message || err));
+      return false;
+    });
+  }
+
+  function ghSchedulePush(){
+    if (_ghSuppressPush) return;
+    if (!ghHasCreds()) return;
+    clearTimeout(_ghTimerPush);
+    _ghTimerPush = setTimeout(function(){
+      ghPushNow(true);
+    }, 1200);
+  }
+
+  function ghStartPolling(){
+    clearInterval(_ghTimerPoll);
+    if (!ghHasCreds()) return;
+    _ghTimerPoll = setInterval(function(){
+      ghFetchGist().then(function(g){
+        if (!g) return;
+        var updated = g.updated_at || null;
+        if (!_ghLastUpdatedAt) { _ghLastUpdatedAt = updated; return; }
+        if (updated && updated !== _ghLastUpdatedAt) {
+          _ghLastUpdatedAt = updated;
+          ghLog('Alteração detectada em outro dispositivo. Atualizando...');
+          ghPullApply();
         }
-        saveAll(atuais); 
-        saveHist(hist); 
-        renderTable(); 
-        renderHist(); 
-        updateCharts();
-        alert('Sincronizado.');
-      });
-    } catch (err) { 
-      alert('Erro pull: ' + (err.message || err)); 
-    }
-  });
-  
-  on($('btn-cloud-list'), 'click', function() {
-    try {
-      if (!supa) { alert('Conecte primeiro.'); return; }
-      supa.from(TABLE).select('*').then(function(ret) {
-        if (ret.error) { alert('Erro ao listar: ' + (ret.error.message || ret.error)); return; }
-        cloudCache = ret.data || [];
-        renderCloudTable();
-      });
-    } catch (err) { 
-      alert('Erro listar: ' + (err.message || err)); 
-    }
-  });
-  
-  on($('btn-cloud-rt'), 'click', function() {
-    try {
-      if (!supa) { alert('Conecte primeiro.'); return; }
-      if (sub) { alert('Realtime já ativo.'); return; }
-      sub = supa.channel('public:' + TABLE)
-        .on('postgres_changes', { event: '*', schema: 'public', table: TABLE }, function(payload) {
-          console.log('Mudança recebida:', payload);
-          // Auto-sincronizar quando houver mudanças
-          setTimeout(function() {
-            supa.from(TABLE).select('*').then(function(ret) {
-              if (!ret.error) {
-                var data = ret.data || [], atuais = [], hist = [];
-                for (var i = 0; i < data.length; i++) { 
-                  var r = data[i]; 
-                  (r.is_archived ? hist : atuais).push(mapCloudToLocal(r)); 
-                }
-                saveAll(atuais); 
-                saveHist(hist); 
-                renderTable(); 
-                renderHist(); 
-                updateCharts();
-              }
-            });
-          }, 1000);
-        })
-        .subscribe(function(status) {
-          if (status === 'SUBSCRIBED') {
-            setCloudState('Realtime Ativo');
-            alert('Realtime ativado. Mudanças na nuvem serão sincronizadas automaticamente.');
-          }
-        });
-    } catch (err) { 
-      alert('Erro realtime: ' + (err.message || err)); 
-    }
-  });
-  
-  on($('btn-cloud-ping'), 'click', function() {
-    try {
-      if (!supa) { alert('Conecte primeiro.'); return; }
-      supa.from(TABLE).select('*', { count: 'exact', head: true }).then(function(ret) {
-        if (ret.error) { alert('Erro no teste: ' + (ret.error.message || ret.error)); return; }
-        alert('Conexão OK. Registros na nuvem: ' + (ret.count || 0));
-      });
-    } catch (err) { 
-      alert('Erro ping: ' + (err.message || err)); 
-    }
-  });
-
-  function renderCloudTable() {
-    var tb = $('tb-cloud'); 
-    if (!tb) return; 
-    tb.innerHTML = '';
-    
-    for (var i = 0; i < cloudCache.length; i++) {
-      var r = cloudCache[i];
-      var tr = document.createElement('tr');
-      var espec = '<div class="clamp">' + text(r.especificacao || '').replace(/\n/g, '<br>') + '</div>';
-      var arq = r.is_archived ? 'Sim' : 'Não';
-      
-      tr.innerHTML =
-        '<td>' + (r.om || '-') + '</td><td>' + (r.data || '-') + '</td><td>' + (r.area || '-') + '</td>' +
-        '<td>' + (r.tag || '-') + '</td><td>' + (r.sistema || '-') + '</td><td>' + (REG_LABEL[r.regiao || ''] || r.regiao || '-') + '</td>' +
-        '<td>' + espec + '</td>' +
-        '<td><span class="badge" style="background:' + (STATUS_COLORS[r.status] || '#adb5bd') + ';">' + (r.status || 'Pendente') + '</span></td>' +
-        '<td>' + arq + '</td>';
-      
-      tb.appendChild(tr);
-    }
+      }).catch(function(){ /*silencioso*/ });
+    }, 8000);
   }
 
-  // Inicialização
+  // Hook: sempre que salvar localmente, agenda push (auto-sync)
+  try{
+    var _origSaveAll = saveAll;
+    saveAll = function(v){ _origSaveAll(v); ghSchedulePush(); };
+    var _origSaveHist = saveHist;
+    saveHist = function(v){ _origSaveHist(v); ghSchedulePush(); };
+  }catch(e){}
+
+
+// Inicialização
   function init() {
-    // Carregar credenciais salvas
-    var keys = loadKeys();
-    if (keys.url) $('sb-url').value = keys.url;
-    if (keys.key) $('sb-key').value = keys.key;
+    // Carregar credenciais GitHub salvas
+    var gh = ghLoadKeys();
+    if ($('gh-token')) $('gh-token').value = gh.token || '';
+    if ($('gh-gist')) $('gh-gist').value = gh.gist || '';
+    if ($('gh-file')) $('gh-file').value = gh.file || 'limpeza_db.json';
+    setDot('sb-dot', !!(gh.token && gh.gist));
     
     // Carregar estado do auto-archive
     $('auto-archive').checked = loadAuto();
@@ -2811,6 +2539,33 @@ var parsed = [];
     renderHist();
     rebuildEquipCheckboxes();
     updateCharts();
+
+    
+    // Botões GitHub (Gist)
+    on($('btn-gh-save'),'click', function(){
+      var t = $('gh-token') ? $('gh-token').value.trim() : '';
+      var g = $('gh-gist') ? $('gh-gist').value.trim() : '';
+      var f = $('gh-file') ? $('gh-file').value.trim() : 'limpeza_db.json';
+      ghSaveKeys(t, g, f);
+      setDot('sb-dot', !!(t && g));
+      ghLog('Credenciais salvas no navegador.');
+      if (t && g) { ghPullApply().then(function(){ ghStartPolling(); }); }
+    });
+    on($('btn-gh-pull'),'click', function(){ ghPullApply().then(function(){ ghStartPolling(); }); });
+    on($('btn-gh-push'),'click', function(){ ghPushNow(false).then(function(){ ghStartPolling(); }); });
+    on($('btn-gh-clear'),'click', function(){
+      ghClearKeys();
+      if ($('gh-token')) $('gh-token').value = '';
+      if ($('gh-gist')) $('gh-gist').value = '';
+      if ($('gh-file')) $('gh-file').value = 'limpeza_db.json';
+      setDot('sb-dot', false);
+      setCloudState('Offline');
+      ghLog('Credenciais removidas.');
+    });
+
+// Auto Cloud: tenta conectar e sincronizar ao carregar (se houver credenciais salvas)
+    setTimeout(function(){ if(ghHasCreds()){ ghPullApply().then(function(){ ghStartPolling(); }); } else { setCloudState('Offline'); } }, 600);
+
   }
 
   // Inicializar
