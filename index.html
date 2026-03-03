@@ -656,7 +656,7 @@
           </div>
           <div class="status-dot">
             <span class="dot fail" id="sb-dot"></span>
-            <span>Supabase</span>
+            <span>Firebase</span>
           </div>
           <div class="status-dot">
             <span class="dot fail" id="cvs-dot"></span>
@@ -1222,12 +1222,13 @@ import {
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-/**
- * Firebase Cloud Sync (GitHub Pages friendly)
- * - Persists data in Firestore
- * - Realtime updates across devices
- * - Debounced push to avoid excessive writes
- */
+// =========================
+// Firebase Firestore Cloud Sync (GitHub Pages friendly)
+// - Realtime across devices (PC/Android)
+// - Debounced push (não salva a cada clique)
+// - Indicador Conectado/Sincronizado no #cloud-state
+// =========================
+
 const firebaseConfig = {
   apiKey: "AIzaSyD95lw4T57c6nYSrlvdEoK20GtQR-dBg5g",
   authDomain: "limpeza-c745c.firebaseapp.com",
@@ -1240,23 +1241,33 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// One shared document for the whole app
+// Documento compartilhado (1 fonte de verdade)
 const DOC = doc(db, "limpeza", "programacao_semanal_v1");
 
-// Stable client id to avoid self-loop confusion in UI
+// clientId robusto (sem depender de storage)
 const CID_KEY = "LIMPEZA_FIREBASE_CLIENT_ID";
-let clientId = localStorage.getItem(CID_KEY);
+let clientId = null;
+
+function tryGetStorage(getter){ try { return getter(); } catch(e){ return null; } }
+function trySetStorage(setter){ try { setter(); return true; } catch(e){ return false; } }
+
+clientId = tryGetStorage(() => localStorage.getItem(CID_KEY))
+        || tryGetStorage(() => sessionStorage.getItem(CID_KEY));
+
 if (!clientId) {
-  clientId = (crypto?.randomUUID ? crypto.randomUUID() : ("cid_" + Math.random().toString(16).slice(2) + Date.now()));
-  localStorage.setItem(CID_KEY, clientId);
+  clientId = (crypto?.randomUUID ? crypto.randomUUID()
+          : ("cid_" + Math.random().toString(16).slice(2) + Date.now()));
+  trySetStorage(() => localStorage.setItem(CID_KEY, clientId))
+  || trySetStorage(() => sessionStorage.setItem(CID_KEY, clientId));
 }
 
-let lastRemoteVersion = 0; // unix ms
+let lastRemoteVersion = 0;
 let pushing = false;
 let pushTimer = null;
 let pendingReasons = new Set();
+let suppressPush = false;
 
-function setState(txt) {
+function setState(txt){
   const el = document.getElementById("cloud-state");
   if (!el) return;
   el.textContent = txt;
@@ -1265,49 +1276,52 @@ function setState(txt) {
   if (txt === "Offline" || txt.startsWith("Erro")) el.classList.add("disconnected");
 }
 
-function safeClone(v) {
+function safeClone(v){
   try { return JSON.parse(JSON.stringify(v ?? null)); } catch { return v; }
 }
 
-async function pullOnce() {
-  setState("Conectando…");
-  const snap = await getDoc(DOC);
-  if (!snap.exists()) {
-    setState("Conectado");
+function beginRemoteApply(){ suppressPush = true; }
+function endRemoteApply(){ suppressPush = false; }
+
+async function pullOnce(){
+  try {
+    setState("Conectando…");
+    const snap = await getDoc(DOC);
+    if (!snap.exists()){
+      setState("Conectado");
+      return null;
+    }
+    const data = snap.data() || {};
+    const version = (data.version_ms || 0);
+    lastRemoteVersion = Math.max(lastRemoteVersion, version);
+    setState("Sincronizado");
+    return data;
+  } catch(e){
+    console.error("Firebase pull error:", e);
+    setState("Erro Pull");
     return null;
   }
-  const data = snap.data() || {};
-  const version = (data.version_ms || 0);
-  lastRemoteVersion = Math.max(lastRemoteVersion, version);
-  setState("Sincronizado");
-  return data;
 }
 
-async function pushNow(reason="") {
-  if (pushing) return;
+async function pushNow(reason="update"){
+  if (pushing || suppressPush) return;
   const hooks = window.__limpezaHooks;
   if (!hooks || !hooks.getCur || !hooks.getHist) return;
 
   pushing = true;
   try {
     setState("Sincronizando…");
-
     const payload = {
       cur: safeClone(hooks.getCur() || []),
       hist: safeClone(hooks.getHist() || []),
-      meta: {
-        clientId,
-        reason: reason || "update",
-        updatedAt: Date.now()
-      },
+      meta: { clientId, reason: reason || "update", updatedAt: Date.now() },
       version_ms: Date.now(),
       server_updated_at: serverTimestamp()
     };
-
     await setDoc(DOC, payload, { merge: true });
     lastRemoteVersion = Math.max(lastRemoteVersion, payload.version_ms);
     setState("Sincronizado");
-  } catch (e) {
+  } catch(e){
     console.error("Firebase push error:", e);
     setState("Erro Sync");
   } finally {
@@ -1315,25 +1329,20 @@ async function pushNow(reason="") {
   }
 }
 
-function schedulePush(reason="") {
+function schedulePush(reason="update"){
+  if (suppressPush) return;
   pendingReasons.add(reason || "update");
   if (pushTimer) clearTimeout(pushTimer);
   pushTimer = setTimeout(() => {
     const r = Array.from(pendingReasons).join(",") || "update";
     pendingReasons.clear();
     pushNow(r);
-  }, 900); // debounce
+  }, 900);
 }
 
-// Expose cloud API to non-module scripts
-window.firebaseCloud = {
-  schedulePush,
-  pushNow,
-  pullOnce,
-  setState
-};
+window.firebaseCloud = { schedulePush, pushNow, pullOnce, setState, beginRemoteApply, endRemoteApply };
 
-// Realtime subscription
+// Realtime (recebe do Firebase -> aplica no site)
 try {
   setState("Conectado");
   onSnapshot(DOC, (snap) => {
@@ -1342,11 +1351,10 @@ try {
     const version = (data.version_ms || 0);
     const meta = data.meta || {};
 
-    // Ignore older versions
     if (version <= lastRemoteVersion) return;
 
-    // If update is from this same client, just advance version and stop (already applied locally)
-    if (meta.clientId && meta.clientId === clientId) {
+    // se veio do próprio cliente, só atualiza versão
+    if (meta.clientId && meta.clientId === clientId){
       lastRemoteVersion = version;
       setState("Sincronizado");
       return;
@@ -1354,21 +1362,24 @@ try {
 
     lastRemoteVersion = version;
 
-    // Apply remote data to local app
     const hooks = window.__limpezaHooks;
     if (!hooks || !hooks.setCur || !hooks.setHist) return;
 
-    hooks.setCur(Array.isArray(data.cur) ? data.cur : []);
-    hooks.setHist(Array.isArray(data.hist) ? data.hist : []);
+    beginRemoteApply();
+    try {
+      hooks.setCur(Array.isArray(data.cur) ? data.cur : []);
+      hooks.setHist(Array.isArray(data.hist) ? data.hist : []);
+    } finally {
+      endRemoteApply();
+    }
 
-    // Ask app to re-render
     try { hooks.refresh?.(); } catch {}
     setState("Sincronizado");
   }, (err) => {
-    console.error("Firebase onSnapshot error:", err);
+    console.error("Firebase realtime error:", err);
     setState("Erro Realtime");
   });
-} catch (e) {
+} catch(e){
   console.error("Firebase init error:", e);
   setState("Erro Firebase");
 }
@@ -1477,7 +1488,7 @@ document.addEventListener('DOMContentLoaded', function() {
 try {
   setDot('cht-dot', !!window.Chart);
   setDot('xslx-dot', !!window.XLSX);
-  setDot('sb-dot', false);
+  setDot('sb-dot', !!window.supabase);
   setDot('cvs-dot', !!window.html2canvas);
 
   var TABLE = 'limpezas_v6_2';
@@ -1600,9 +1611,10 @@ function loadAll() {
     return _memCur.slice();
   }
 }
-function saveAll(v){ _memCur = Array.isArray(v) ? v : [];
+function saveAll(v) {
+  _memCur = Array.isArray(v) ? v : [];
   _lsSet(LS_CUR, JSON.stringify(_memCur));
- if (window.firebaseCloud && window.firebaseCloud.schedulePush) { window.firebaseCloud.schedulePush("cur"); } }
+}
 
 function loadHist() {
   try {
@@ -1615,23 +1627,9 @@ function loadHist() {
     return _memHist.slice();
   }
 }
-function saveHist(v){ _memHist = Array.isArray(v) ? v : [];
+function saveHist(v) {
+  _memHist = Array.isArray(v) ? v : [];
   _lsSet(LS_HIS, JSON.stringify(_memHist));
- if (window.firebaseCloud && window.firebaseCloud.schedulePush) { window.firebaseCloud.schedulePush("hist"); } 
-
-            // --- Cloud hooks (Firebase) ---
-            window.__limpezaHooks = {
-                getCur: function(){ return loadAll(); },
-                getHist: function(){ return loadHist(); },
-                setCur: function(arr){ saveAll(arr); },
-                setHist: function(arr){ saveHist(arr); },
-                refresh: function(){
-                    try { renderTable && renderTable(); } catch(e) {}
-                    try { renderHist && renderHist(); } catch(e) {}
-                    try { rebuildEquipCheckboxes && rebuildEquipCheckboxes(); } catch(e) {}
-                    try { updateCharts && updateCharts(); } catch(e) {}
-                }
-            };
 }
 
 function loadAuto() {
@@ -2825,6 +2823,77 @@ var parsed = [];
   }
 }
 });
+</script>
+<script>
+(function(){
+  function has(fn){ return typeof fn === "function"; }
+
+  // Aguarda o script principal declarar as funções
+  var tries = 0;
+  var t = setInterval(function(){
+    tries++;
+
+    // funções do app (no arquivo original elas existem no escopo global)
+    var ok = has(window.loadAll) && has(window.saveAll) && has(window.loadHist) && has(window.saveHist)
+          && has(window.renderTable) && has(window.renderHist) && has(window.updateCharts);
+
+    if (!ok && tries < 80) return;
+    clearInterval(t);
+
+    // hooks para o Firebase acessar dados do app
+    window.__limpezaHooks = {
+      getCur: function(){ return window.loadAll(); },
+      getHist: function(){ return window.loadHist(); },
+      setCur: function(arr){ window.saveAll(Array.isArray(arr)?arr:[]); },
+      setHist: function(arr){ window.saveHist(Array.isArray(arr)?arr:[]); },
+      refresh: function(){
+        try { window.renderTable(); } catch(e){}
+        try { window.renderHist(); } catch(e){}
+        try { window.rebuildEquipCheckboxes && window.rebuildEquipCheckboxes(); } catch(e){}
+        try { window.updateCharts(); } catch(e){}
+      }
+    };
+
+    // Wrap saveAll/saveHist para disparar sync (debounce)
+    if (!window.saveAll.__fbWrapped){
+      var _saveAll = window.saveAll;
+      window.saveAll = function(v){
+        var r = _saveAll.call(this, v);
+        if (window.firebaseCloud) window.firebaseCloud.schedulePush("cur");
+        return r;
+      };
+      window.saveAll.__fbWrapped = true;
+    }
+
+    if (!window.saveHist.__fbWrapped){
+      var _saveHist = window.saveHist;
+      window.saveHist = function(v){
+        var r = _saveHist.call(this, v);
+        if (window.firebaseCloud) window.firebaseCloud.schedulePush("hist");
+        return r;
+      };
+      window.saveHist.__fbWrapped = true;
+    }
+
+    // Pull once ao abrir (Firebase -> local) sem disparar push
+    if (window.firebaseCloud && window.firebaseCloud.pullOnce){
+      window.firebaseCloud.pullOnce().then(function(remote){
+        if (!remote) return;
+        var cur = Array.isArray(remote.cur) ? remote.cur : [];
+        var hist = Array.isArray(remote.hist) ? remote.hist : [];
+        window.firebaseCloud.beginRemoteApply && window.firebaseCloud.beginRemoteApply();
+        try {
+          window.saveAll(cur);
+          window.saveHist(hist);
+        } finally {
+          window.firebaseCloud.endRemoteApply && window.firebaseCloud.endRemoteApply();
+        }
+        window.__limpezaHooks.refresh();
+        if (window.firebaseCloud && window.firebaseCloud.setState) window.firebaseCloud.setState("Sincronizado");
+      });
+    }
+  }, 250);
+})();
 </script>
 </body>
 </html>
