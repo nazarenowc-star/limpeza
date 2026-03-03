@@ -2423,6 +2423,149 @@ var parsed = [];
 
   // Nuvem (mantida, sem mudanças de conexão)
   var supa = null, sub = null, cloudCache = [];
+// =========================
+// Auto Cloud (sincronização automática entre PC e celular)
+// - Ao abrir: conecta com as credenciais (campo ou salvas) e baixa dados 1x
+// - Ao alterar dados locais: sobe para a nuvem (debounce) se conectado
+// - Opcional: ativa Realtime automaticamente para puxar mudanças feitas em outro dispositivo
+// =========================
+var _autoCloudPulled = false;
+var _autoPushTimer = null;
+var _suppressAutoPush = false;
+var _autoRealtime = true; // pode desligar se quiser
+
+function logCloud(msg){
+  try{
+    var el = $('controles-log');
+    if (!el) return;
+    var now = new Date().toLocaleString('pt-BR');
+    var entry = '<div style="margin-bottom:6px"><strong>['+now+']</strong> '+ msg +'</div>';
+    el.innerHTML = entry + el.innerHTML;
+  }catch(e){}
+}
+
+function ensureSupaFromKeys(){
+  if (!window.supabase) { setCloudState('Supabase OFF'); return null; }
+  var url = ($('sb-url') && $('sb-url').value ? $('sb-url').value.trim() : '');
+  var key = ($('sb-key') && $('sb-key').value ? $('sb-key').value.trim() : '');
+  if ((!url || !key)) {
+    var kk = loadKeys();
+    url = url || (kk.url || '');
+    key = key || (kk.key || '');
+    if ($('sb-url') && url) $('sb-url').value = url;
+    if ($('sb-key') && key) $('sb-key').value = key;
+  }
+  if (!url || !key) { setCloudState('Offline'); return null; }
+  try{
+    if (!supa) supa = supabase.createClient(url, key, { auth: { persistSession: false } });
+    setCloudState('Conectado');
+    return supa;
+  }catch(e){
+    setCloudState('Erro Conectar');
+    return null;
+  }
+}
+
+function cloudPullAndApply(){
+  if (!supa) return Promise.resolve(false);
+  setCloudState('Baixando...');
+  _suppressAutoPush = true;
+  return supa.from(TABLE).select('*').then(function(ret){
+    if (ret.error) {
+      console.warn('Auto pull erro:', ret.error);
+      setCloudState('Sem acesso');
+      _suppressAutoPush = false;
+      return false;
+    }
+    var data = ret.data || [], atuais = [], hist = [];
+    for (var i = 0; i < data.length; i++) {
+      var r = data[i];
+      (r.is_archived ? hist : atuais).push(mapCloudToLocal(r));
+    }
+    saveAll(atuais);
+    saveHist(hist);
+    renderTable();
+    renderHist();
+    rebuildEquipCheckboxes();
+    updateCharts();
+    setCloudState('Sincronizado');
+    logCloud('Auto pull: ' + (data.length || 0) + ' registro(s) carregado(s).');
+    _suppressAutoPush = false;
+    return true;
+  });
+}
+
+function cloudPushAllNow(){
+  if (!supa) return;
+  if (_suppressAutoPush) return;
+  try{
+    setCloudState('Subindo...');
+    var at = loadAll().map(function(r){ return mapLocalToCloud(r, false); });
+    var hi = loadHist().map(function(r){ return mapLocalToCloud(r, true); });
+    supa.from(TABLE).upsert(at.concat(hi), { onConflict: 'om,tag,data' }).then(function(ret){
+      if (ret && ret.error) {
+        console.warn('Auto push erro:', ret.error);
+        setCloudState('Erro Push');
+        logCloud('Auto push: ERRO — ' + (ret.error.message || ret.error));
+        return;
+      }
+      setCloudState('Sincronizado');
+      logCloud('Auto push: OK — ' + (at.length + hi.length) + ' registro(s).');
+    });
+  }catch(e){
+    console.warn('Auto push exception:', e);
+    setCloudState('Erro Push');
+  }
+}
+
+function scheduleCloudPush(){
+  if (!supa) return;
+  if (_suppressAutoPush) return;
+  clearTimeout(_autoPushTimer);
+  _autoPushTimer = setTimeout(cloudPushAllNow, 900);
+}
+
+// Hook: toda vez que salvar local (saveAll/saveHist), agenda push (se conectado)
+(function(){
+  var _saveAll = saveAll;
+  var _saveHist = saveHist;
+  saveAll = function(v){ _saveAll(v); scheduleCloudPush(); };
+  saveHist = function(v){ _saveHist(v); scheduleCloudPush(); };
+})();
+
+function autoStartRealtime(){
+  try{
+    if (!_autoRealtime) return;
+    if (!supa) return;
+    if (sub) return;
+    sub = supa.channel('public:' + TABLE)
+      .on('postgres_changes', { event: '*', schema: 'public', table: TABLE }, function(payload){
+        // Mudança em outro dispositivo -> puxa para cá
+        console.log('Realtime mudança:', payload);
+        // evita puxar em excesso
+        clearTimeout(_autoPushTimer);
+        setTimeout(function(){ cloudPullAndApply(); }, 700);
+      })
+      .subscribe(function(status){
+        if (status === 'SUBSCRIBED') {
+          setCloudState('Realtime Ativo');
+          logCloud('Realtime: ativo.');
+        }
+      });
+  }catch(e){
+    console.warn('Realtime auto erro:', e);
+  }
+}
+
+function autoConnectAndPullOnce(){
+  if (_autoCloudPulled) return;
+  var cli = ensureSupaFromKeys();
+  if (!cli) return;
+  _autoCloudPulled = true;
+  cloudPullAndApply().then(function(ok){
+    if (ok) autoStartRealtime();
+  });
+}
   
   function setCloudState(t) { 
     var el = $('cloud-state'); 
@@ -2636,6 +2779,10 @@ var parsed = [];
     renderHist();
     rebuildEquipCheckboxes();
     updateCharts();
+
+    // Auto Cloud: tenta conectar e sincronizar ao carregar (se houver credenciais salvas)
+    setTimeout(autoConnectAndPullOnce, 600);
+
   }
 
   // Inicializar
