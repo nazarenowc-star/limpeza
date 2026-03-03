@@ -1410,16 +1410,130 @@ try {
     return s;
   }
 
-  function loadAll() { try { return JSON.parse(localStorage.getItem(LS_CUR) || '[]'); } catch (e) { return []; } }
-  function saveAll(v) { localStorage.setItem(LS_CUR, JSON.stringify(v || [])); }
-  function loadHist() { try { return JSON.parse(localStorage.getItem(LS_HIS) || '[]'); } catch (e) { return []; } }
-  function saveHist(v) { localStorage.setItem(LS_HIS, JSON.stringify(v || [])); }
-  function loadAuto() { return localStorage.getItem(LS_AUTO) === '1'; }
-  function saveKeys(u, k) { localStorage.setItem(LS_KEYS_URL, u || ''); localStorage.setItem(LS_KEYS_KEY, k || ''); }
-  function clearKeys() { localStorage.removeItem(LS_KEYS_URL); localStorage.removeItem(LS_KEYS_KEY); }
-  function loadKeys() { return { url: (localStorage.getItem(LS_KEYS_URL) || ''), key: (localStorage.getItem(LS_KEYS_KEY) || '') }; }
+  // =========================
+// Storage seguro (Android / iOS podem bloquear localStorage)
+// Mantém o front intacto, apenas garante que os dados apareçam.
+// =========================
+var _memCur = [];
+var _memHist = [];
 
-  var parsed = [];
+function _lsGet(key) {
+  try { return localStorage.getItem(key); } catch (e) { return null; }
+}
+function _lsSet(key, val) {
+  try { localStorage.setItem(key, val); return true; } catch (e) { return false; }
+}
+function _lsRem(key) {
+  try { localStorage.removeItem(key); } catch (e) {}
+}
+
+function loadAll() {
+  try {
+    var raw = _lsGet(LS_CUR);
+    if (!raw) return _memCur.slice();
+    var v = JSON.parse(raw || '[]');
+    _memCur = Array.isArray(v) ? v : [];
+    return _memCur.slice();
+  } catch (e) {
+    return _memCur.slice();
+  }
+}
+function saveAll(v) {
+  _memCur = Array.isArray(v) ? v : [];
+  _lsSet(LS_CUR, JSON.stringify(_memCur));
+}
+
+function loadHist() {
+  try {
+    var raw = _lsGet(LS_HIS);
+    if (!raw) return _memHist.slice();
+    var v = JSON.parse(raw || '[]');
+    _memHist = Array.isArray(v) ? v : [];
+    return _memHist.slice();
+  } catch (e) {
+    return _memHist.slice();
+  }
+}
+function saveHist(v) {
+  _memHist = Array.isArray(v) ? v : [];
+  _lsSet(LS_HIS, JSON.stringify(_memHist));
+}
+
+function loadAuto() {
+  return _lsGet(LS_AUTO) === '1';
+}
+
+function saveKeys(u, k) {
+  _lsSet(LS_KEYS_URL, u || '');
+  _lsSet(LS_KEYS_KEY, k || '');
+}
+function clearKeys() {
+  _lsRem(LS_KEYS_URL);
+  _lsRem(LS_KEYS_KEY);
+}
+function loadKeys() {
+  return { url: (_lsGet(LS_KEYS_URL) || ''), key: (_lsGet(LS_KEYS_KEY) || '') };
+}
+
+
+  // =========================
+// Auto-sincronização (para celular abrir já com os dados da nuvem)
+// =========================
+var _autoCloudPulled = false;
+
+function setCloudState(label) {
+  var el = $('cloud-state');
+  if (el) el.textContent = label || 'Offline';
+}
+
+function autoConnectAndPullOnce() {
+  if (_autoCloudPulled) return;
+  if (!window.supabase) { setCloudState('Supabase OFF'); return; }
+
+  var u = ($('sb-url') && $('sb-url').value ? $('sb-url').value.trim() : '');
+  var k = ($('sb-key') && $('sb-key').value ? $('sb-key').value.trim() : '');
+
+  if ((!u || !k)) {
+    var kk = loadKeys();
+    u = u || (kk.url || '');
+    k = k || (kk.key || '');
+    if ($('sb-url') && u) $('sb-url').value = u;
+    if ($('sb-key') && k) $('sb-key').value = k;
+  }
+
+  if (!u || !k) { setCloudState('Offline'); return; }
+
+  try {
+    supa = supabase.createClient(u, k, { auth: { persistSession: false } });
+    setCloudState('Conectado');
+  } catch (e) {
+    setCloudState('Erro Conectar');
+    return;
+  }
+
+  _autoCloudPulled = true;
+  supa.from(TABLE).select('*').then(function(ret) {
+    if (ret.error) { 
+      console.warn('Auto pull erro:', ret.error);
+      setCloudState('Sem acesso');
+      return; 
+    }
+    var data = ret.data || [], atuais = [], hist = [];
+    for (var i = 0; i < data.length; i++) {
+      var r = data[i];
+      (r.is_archived ? hist : atuais).push(mapCloudToLocal(r));
+    }
+    saveAll(atuais);
+    saveHist(hist);
+    renderTable();
+    renderHist();
+    updateCharts();
+      autoConnectAndPullOnce();
+setCloudState('Sincronizado');
+  });
+}
+
+var parsed = [];
 
   function renderTable() {
     var tb = $('tb'); 
