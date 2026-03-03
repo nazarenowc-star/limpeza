@@ -9,6 +9,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <style>
@@ -1098,20 +1100,17 @@
             <strong>Tabela na nuvem:</strong> public.limpezas_v6_2
           </div>
           
-          <div class="row g-3 mb-4">
-            <div class="col-md-6">
-              <label class="form-label fw-bold">SUPABASE_URL</label>
-              <input class="form-control form-control-premium" id="sb-url" 
-                     placeholder="https://xxxx.supabase.co"
-                     value="https://rnrltabsqnfsxmguntxw.supabase.co">
-            </div>
-            <div class="col-md-6">
-              <label class="form-label fw-bold">SUPABASE_ANON_KEY</label>
-              <input class="form-control form-control-premium" id="sb-key" 
-                     placeholder="eyJhbGciOi..."
-                     value="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJucmx0YWJzcW5mc3htZ3VudHh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTczNzAzMTYsImV4cCI6MjA3Mjk0NjMxNn0.Wxxjfsi38pT6rYt5kmAEs_j87vAZtKoqAtmO3fxOHFc">
-            </div>
-          </div>
+          
+<div class="row g-3 mb-4">
+  <div class="col-12">
+    <label class="form-label fw-bold">FIREBASE_CONFIG (JSON)</label>
+    <textarea class="form-control form-control-premium" id="fb-config" rows="6"
+      placeholder='Cole aqui o objeto firebaseConfig do seu projeto (ex.: {"apiKey":"...","authDomain":"...","projectId":"...","appId":"..."})'></textarea>
+    <div class="form-text">
+      Dica: no Console Firebase → Configurações do projeto → Seus apps → Configuração do SDK (Web).
+    </div>
+  </div>
+</div>
           
           <div class="d-flex flex-wrap gap-2 mb-4">
             <button class="btn btn-premium btn-premium-primary" id="btn-cloud-connect">
@@ -1211,180 +1210,6 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import {
-  getFirestore,
-  doc,
-  setDoc,
-  getDoc,
-  onSnapshot,
-  serverTimestamp
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-// =========================
-// Firebase Firestore Cloud Sync (GitHub Pages friendly)
-// - Realtime across devices (PC/Android)
-// - Debounced push (não salva a cada clique)
-// - Indicador Conectado/Sincronizado no #cloud-state
-// =========================
-
-const firebaseConfig = {
-  apiKey: "AIzaSyD95lw4T57c6nYSrlvdEoK20GtQR-dBg5g",
-  authDomain: "limpeza-c745c.firebaseapp.com",
-  projectId: "limpeza-c745c",
-  storageBucket: "limpeza-c745c.firebasestorage.app",
-  messagingSenderId: "192675928694",
-  appId: "1:192675928694:web:f1eef86c50fa7b9252dd57"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-// Documento compartilhado (1 fonte de verdade)
-const DOC = doc(db, "limpeza", "programacao_semanal_v1");
-
-// clientId robusto (sem depender de storage)
-const CID_KEY = "LIMPEZA_FIREBASE_CLIENT_ID";
-let clientId = null;
-
-function tryGetStorage(getter){ try { return getter(); } catch(e){ return null; } }
-function trySetStorage(setter){ try { setter(); return true; } catch(e){ return false; } }
-
-clientId = tryGetStorage(() => localStorage.getItem(CID_KEY))
-        || tryGetStorage(() => sessionStorage.getItem(CID_KEY));
-
-if (!clientId) {
-  clientId = (crypto?.randomUUID ? crypto.randomUUID()
-          : ("cid_" + Math.random().toString(16).slice(2) + Date.now()));
-  trySetStorage(() => localStorage.setItem(CID_KEY, clientId))
-  || trySetStorage(() => sessionStorage.setItem(CID_KEY, clientId));
-}
-
-let lastRemoteVersion = 0;
-let pushing = false;
-let pushTimer = null;
-let pendingReasons = new Set();
-let suppressPush = false;
-
-function setState(txt){
-  const el = document.getElementById("cloud-state");
-  if (!el) return;
-  el.textContent = txt;
-  el.className = "cloud-state";
-  if (txt === "Conectado" || txt === "Sincronizado") el.classList.add("connected");
-  if (txt === "Offline" || txt.startsWith("Erro")) el.classList.add("disconnected");
-}
-
-function safeClone(v){
-  try { return JSON.parse(JSON.stringify(v ?? null)); } catch { return v; }
-}
-
-function beginRemoteApply(){ suppressPush = true; }
-function endRemoteApply(){ suppressPush = false; }
-
-async function pullOnce(){
-  try {
-    setState("Conectando…");
-    const snap = await getDoc(DOC);
-    if (!snap.exists()){
-      setState("Conectado");
-      return null;
-    }
-    const data = snap.data() || {};
-    const version = (data.version_ms || 0);
-    lastRemoteVersion = Math.max(lastRemoteVersion, version);
-    setState("Sincronizado");
-    return data;
-  } catch(e){
-    console.error("Firebase pull error:", e);
-    setState("Erro Pull");
-    return null;
-  }
-}
-
-async function pushNow(reason="update"){
-  if (pushing || suppressPush) return;
-  const hooks = window.__limpezaHooks;
-  if (!hooks || !hooks.getCur || !hooks.getHist) return;
-
-  pushing = true;
-  try {
-    setState("Sincronizando…");
-    const payload = {
-      cur: safeClone(hooks.getCur() || []),
-      hist: safeClone(hooks.getHist() || []),
-      meta: { clientId, reason: reason || "update", updatedAt: Date.now() },
-      version_ms: Date.now(),
-      server_updated_at: serverTimestamp()
-    };
-    await setDoc(DOC, payload, { merge: true });
-    lastRemoteVersion = Math.max(lastRemoteVersion, payload.version_ms);
-    setState("Sincronizado");
-  } catch(e){
-    console.error("Firebase push error:", e);
-    setState("Erro Sync");
-  } finally {
-    pushing = false;
-  }
-}
-
-function schedulePush(reason="update"){
-  if (suppressPush) return;
-  pendingReasons.add(reason || "update");
-  if (pushTimer) clearTimeout(pushTimer);
-  pushTimer = setTimeout(() => {
-    const r = Array.from(pendingReasons).join(",") || "update";
-    pendingReasons.clear();
-    pushNow(r);
-  }, 900);
-}
-
-window.firebaseCloud = { schedulePush, pushNow, pullOnce, setState, beginRemoteApply, endRemoteApply };
-
-// Realtime (recebe do Firebase -> aplica no site)
-try {
-  setState("Conectado");
-  onSnapshot(DOC, (snap) => {
-    if (!snap.exists()) return;
-    const data = snap.data() || {};
-    const version = (data.version_ms || 0);
-    const meta = data.meta || {};
-
-    if (version <= lastRemoteVersion) return;
-
-    // se veio do próprio cliente, só atualiza versão
-    if (meta.clientId && meta.clientId === clientId){
-      lastRemoteVersion = version;
-      setState("Sincronizado");
-      return;
-    }
-
-    lastRemoteVersion = version;
-
-    const hooks = window.__limpezaHooks;
-    if (!hooks || !hooks.setCur || !hooks.setHist) return;
-
-    beginRemoteApply();
-    try {
-      hooks.setCur(Array.isArray(data.cur) ? data.cur : []);
-      hooks.setHist(Array.isArray(data.hist) ? data.hist : []);
-    } finally {
-      endRemoteApply();
-    }
-
-    try { hooks.refresh?.(); } catch {}
-    setState("Sincronizado");
-  }, (err) => {
-    console.error("Firebase realtime error:", err);
-    setState("Erro Realtime");
-  });
-} catch(e){
-  console.error("Firebase init error:", e);
-  setState("Erro Firebase");
-}
-</script>
-
 <script>
 function $(id) { return document.getElementById(id); }
 function setDot(id, ok) { 
@@ -1488,7 +1313,7 @@ document.addEventListener('DOMContentLoaded', function() {
 try {
   setDot('cht-dot', !!window.Chart);
   setDot('xslx-dot', !!window.XLSX);
-  setDot('sb-dot', !!window.supabase);
+  setDot('sb-dot', !!(window.firebase && window.firebase.firestore));
   setDot('cvs-dot', !!window.html2canvas);
 
   var TABLE = 'limpezas_v6_2';
@@ -1583,130 +1408,16 @@ try {
     return s;
   }
 
-  // =========================
-// Storage seguro (Android / iOS podem bloquear localStorage)
-// Mantém o front intacto, apenas garante que os dados apareçam.
-// =========================
-var _memCur = [];
-var _memHist = [];
+  function loadAll() { try { return JSON.parse(localStorage.getItem(LS_CUR) || '[]'); } catch (e) { return []; } }
+  function saveAll(v) { try { localStorage.setItem(LS_CUR, JSON.stringify(v || [])); } catch(e) { console.warn(e); alert('Armazenamento local cheio no navegador (quota). Dica: use Nuvem → Subir/Realtime e depois limpe histórico/compacte.'); } }
+  function loadHist() { try { return JSON.parse(localStorage.getItem(LS_HIS) || '[]'); } catch (e) { return []; } }
+  function saveHist(v) { try { localStorage.setItem(LS_HIS, JSON.stringify(v || [])); } catch(e) { console.warn(e); alert('Armazenamento local cheio no navegador (quota). Dica: use Nuvem → Subir/Realtime e depois limpe histórico/compacte.'); } }
+  function loadAuto() { return localStorage.getItem(LS_AUTO) === '1'; }
+  function saveKeys(u, k) { localStorage.setItem(LS_KEYS_URL, u || ''); localStorage.setItem(LS_KEYS_KEY, k || ''); }
+  function clearKeys() { localStorage.removeItem(LS_KEYS_URL); localStorage.removeItem(LS_KEYS_KEY); }
+  function loadKeys() { return { url: (localStorage.getItem(LS_KEYS_URL) || ''), key: (localStorage.getItem(LS_KEYS_KEY) || '') }; }
 
-function _lsGet(key) {
-  try { return localStorage.getItem(key); } catch (e) { return null; }
-}
-function _lsSet(key, val) {
-  try { localStorage.setItem(key, val); return true; } catch (e) { return false; }
-}
-function _lsRem(key) {
-  try { localStorage.removeItem(key); } catch (e) {}
-}
-
-function loadAll() {
-  try {
-    var raw = _lsGet(LS_CUR);
-    if (!raw) return _memCur.slice();
-    var v = JSON.parse(raw || '[]');
-    _memCur = Array.isArray(v) ? v : [];
-    return _memCur.slice();
-  } catch (e) {
-    return _memCur.slice();
-  }
-}
-function saveAll(v) {
-  _memCur = Array.isArray(v) ? v : [];
-  _lsSet(LS_CUR, JSON.stringify(_memCur));
-}
-
-function loadHist() {
-  try {
-    var raw = _lsGet(LS_HIS);
-    if (!raw) return _memHist.slice();
-    var v = JSON.parse(raw || '[]');
-    _memHist = Array.isArray(v) ? v : [];
-    return _memHist.slice();
-  } catch (e) {
-    return _memHist.slice();
-  }
-}
-function saveHist(v) {
-  _memHist = Array.isArray(v) ? v : [];
-  _lsSet(LS_HIS, JSON.stringify(_memHist));
-}
-
-function loadAuto() {
-  return _lsGet(LS_AUTO) === '1';
-}
-
-function saveKeys(u, k) {
-  _lsSet(LS_KEYS_URL, u || '');
-  _lsSet(LS_KEYS_KEY, k || '');
-}
-function clearKeys() {
-  _lsRem(LS_KEYS_URL);
-  _lsRem(LS_KEYS_KEY);
-}
-function loadKeys() {
-  return { url: (_lsGet(LS_KEYS_URL) || ''), key: (_lsGet(LS_KEYS_KEY) || '') };
-}
-
-
-  // =========================
-// Auto-sincronização (para celular abrir já com os dados da nuvem)
-// =========================
-var _autoCloudPulled = false;
-
-function setCloudState(label) {
-  var el = $('cloud-state');
-  if (el) el.textContent = label || 'Offline';
-}
-
-function autoConnectAndPullOnce() {
-  if (_autoCloudPulled) return;
-  if (!window.supabase) { setCloudState('Supabase OFF'); return; }
-
-  var u = ($('sb-url') && $('sb-url').value ? $('sb-url').value.trim() : '');
-  var k = ($('sb-key') && $('sb-key').value ? $('sb-key').value.trim() : '');
-
-  if ((!u || !k)) {
-    var kk = loadKeys();
-    u = u || (kk.url || '');
-    k = k || (kk.key || '');
-    if ($('sb-url') && u) $('sb-url').value = u;
-    if ($('sb-key') && k) $('sb-key').value = k;
-  }
-
-  if (!u || !k) { setCloudState('Offline'); return; }
-
-  try {
-    supa = supabase.createClient(u, k, { auth: { persistSession: false } });
-    setCloudState('Conectado');
-  } catch (e) {
-    setCloudState('Erro Conectar');
-    return;
-  }
-
-  _autoCloudPulled = true;
-  supa.from(TABLE).select('*').then(function(ret) {
-    if (ret.error) { 
-      console.warn('Auto pull erro:', ret.error);
-      setCloudState('Sem acesso');
-      return; 
-    }
-    var data = ret.data || [], atuais = [], hist = [];
-    for (var i = 0; i < data.length; i++) {
-      var r = data[i];
-      (r.is_archived ? hist : atuais).push(mapCloudToLocal(r));
-    }
-    saveAll(atuais);
-    saveHist(hist);
-    renderTable();
-    renderHist();
-    updateCharts();
-      autoConnectAndPullOnce();
-setCloudState('Sincronizado');
-  });
-}
-
-var parsed = [];
+  var parsed = [];
 
   function renderTable() {
     var tb = $('tb'); 
@@ -2594,19 +2305,39 @@ var parsed = [];
     }, 200);
   });
 
-  // Nuvem (mantida, sem mudanças de conexão)
-  var supa = null, sub = null, cloudCache = [];
   
+// Nuvem (Firebase Firestore)
+  var fbApp = null, fbDb = null, fbUnsub = null, cloudCache = [];
+  var FB_CFG_LS = 'fb_cfg_limpeza_v1';
+  var AUTO_SYNC_LS = 'fb_autosync_limpeza_v1';
+
   function setCloudState(t) { 
     var el = $('cloud-state'); 
     if (el) {
       el.textContent = t;
       el.className = 'cloud-state';
-      if (t === 'Conectado') el.className += ' connected';
+      if (t === 'Conectado' || t.indexOf('Realtime') === 0) el.className += ' connected';
       else if (t === 'Offline') el.className += ' disconnected';
     }
   }
-  
+
+  function saveFbCfg(cfgObj) {
+    try { localStorage.setItem(FB_CFG_LS, JSON.stringify(cfgObj || {})); } catch(e){}
+  }
+  function loadFbCfg() {
+    try { return JSON.parse(localStorage.getItem(FB_CFG_LS) || '{}'); } catch(e){ return {}; }
+  }
+
+  function docIdFrom(r) {
+    // Conflito antigo: om, tag, data. Firestore docId precisa ser string "segura".
+    var om = (r.om || r.OM || '').toString().trim();
+    var tag = (r.tag || r.TAG || '').toString().trim();
+    var data = (r.data || r.DATA || '').toString().trim();
+    var base = (om + '__' + tag + '__' + data).replace(/[^\w\-.:@]+/g, '_');
+    if (base.length > 1400) base = base.slice(0, 1400);
+    return base || ('doc_' + Date.now());
+  }
+
   function mapLocalToCloud(r, isArchived) {
     return { 
       om: r.OM || null, 
@@ -2622,10 +2353,10 @@ var parsed = [];
       regiao: (r.REGIAO || deriveRegiao(r['ÁREA']) || null), 
       is_archived: !!isArchived, 
       archived_at: isArchived ? (r.ARQUIVADO_EM || new Date().toISOString()) : null, 
-      updated_at: new Date().toISOString() 
+      updated_at: new Date().toISOString()
     };
   }
-  
+
   function mapCloudToLocal(r) {
     return { 
       OM: r.om || '', 
@@ -2642,137 +2373,238 @@ var parsed = [];
     };
   }
 
-  on($('btn-cloud-connect'), 'click', function() {
+  function ensureFirebaseReady() {
+    if (!window.firebase || !window.firebase.firestore) return false;
+    return true;
+  }
+
+  function getCollectionRef() {
+    if (!fbDb) return null;
+    return fbDb.collection(TABLE);
+  }
+
+  function disconnectRealtime() {
+    if (fbUnsub) { try { fbUnsub(); } catch(e){} fbUnsub = null; }
+  }
+
+  function safeParseJson(txt) {
+    try { return JSON.parse(txt); } catch(e) { return null; }
+  }
+
+  function connectFirebase() {
+    if (!ensureFirebaseReady()) { alert('Biblioteca Firebase não carregou.'); return; }
+
+    var txt = ($('fb-config') && $('fb-config').value) ? $('fb-config').value.trim() : '';
+    var cfg = txt ? safeParseJson(txt) : loadFbCfg();
+
+    if (!cfg || !cfg.apiKey || !cfg.projectId) {
+      alert('Cole o FIREBASE_CONFIG (JSON) com pelo menos apiKey e projectId.');
+      return;
+    }
+
+    // Reaproveita app existente se já inicializado
     try {
-      if (!window.supabase) { alert('Biblioteca Supabase não carregou.'); return; }
-      var url = $('sb-url').value.trim(), key = $('sb-key').value.trim();
-      if (!url || !key) { alert('Informe SUPABASE_URL e ANON KEY.'); return; }
-      supa = supabase.createClient(url, key, { auth: { persistSession: false } });
+      if (!firebase.apps || !firebase.apps.length) {
+        fbApp = firebase.initializeApp(cfg);
+      } else {
+        fbApp = firebase.app();
+      }
+      fbDb = firebase.firestore();
+      // Menos cache local do Firestore (evita muita gravação local no mobile)
+      try { fbDb.settings({ cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED }); } catch(e){}
+      saveFbCfg(cfg);
       setCloudState('Conectado');
-      alert('Conectado.');
-    } catch (err) { 
-      alert('Erro conectar: ' + (err.message || err)); 
+      alert('Conectado ao Firebase.');
+    } catch (err) {
+      console.error(err);
+      alert('Erro conectar Firebase: ' + (err.message || err));
+    }
+  }
+
+  // Auto-sync (debounce)
+  var autoSyncTimer = null;
+  function scheduleAutoPush() {
+    if (!fbDb) return;
+    var enabled = (localStorage.getItem(AUTO_SYNC_LS) || '1') === '1';
+    if (!enabled) return;
+
+    clearTimeout(autoSyncTimer);
+    autoSyncTimer = setTimeout(function() {
+      try { doPushToFirebase(true); } catch(e){}
+    }, 900);
+  }
+
+  // Intercepta saves locais para tentar subir automaticamente
+  var _saveAllOrig = saveAll;
+  saveAll = function(v) { _saveAllOrig(v); scheduleAutoPush(); }
+  var _saveHistOrig = saveHist;
+  saveHist = function(v) { _saveHistOrig(v); scheduleAutoPush(); }
+
+  function chunk(arr, size) {
+    var out = [];
+    for (var i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+    return out;
+  }
+
+  function doPushToFirebase(silent) {
+    if (!fbDb) { if (!silent) alert('Conecte primeiro.'); return; }
+    var col = getCollectionRef();
+    if (!col) { if (!silent) alert('Coleção inválida.'); return; }
+
+    var at = loadAll().map(function(r) { return mapLocalToCloud(r, false); });
+    var hi = loadHist().map(function(r) { return mapLocalToCloud(r, true); });
+    var all = at.concat(hi);
+
+    if (!all.length) { if (!silent) alert('Nada para enviar.'); return; }
+
+    setCloudState('Sincronizando…');
+
+    // Firestore batch: limite 500 operações por batch
+    var groups = chunk(all, 450);
+    var idx = 0;
+
+    function runNext() {
+      if (idx >= groups.length) {
+        setCloudState('Conectado');
+        if (!silent) alert('Enviado para a nuvem.');
+        return;
+      }
+      var batch = fbDb.batch();
+      var g = groups[idx++];
+      for (var i = 0; i < g.length; i++) {
+        var docData = g[i];
+        var id = docIdFrom(docData);
+        batch.set(col.doc(id), docData, { merge: true });
+      }
+      batch.commit().then(runNext).catch(function(err) {
+        console.error(err);
+        setCloudState('Offline');
+        if (!silent) alert('Erro no envio: ' + (err.message || err));
+      });
+    }
+    runNext();
+  }
+
+  on($('btn-cloud-connect'), 'click', function() { connectFirebase(); });
+
+  on($('btn-cloud-savekeys'), 'click', function() { 
+    try {
+      var txt = ($('fb-config') && $('fb-config').value) ? $('fb-config').value.trim() : '';
+      var cfg = txt ? safeParseJson(txt) : null;
+      if (!cfg) { alert('Cole um JSON válido no FIREBASE_CONFIG.'); return; }
+      saveFbCfg(cfg);
+      alert('Configuração salva.');
+    } catch (err) {
+      alert('Erro salvar: ' + (err.message || err));
     }
   });
-  
-  on($('btn-cloud-savekeys'), 'click', function() { 
-    try { 
-      saveKeys($('sb-url').value.trim(), $('sb-key').value.trim()); 
-      alert('Credenciais salvas.'); 
-    } catch (err) { 
-      alert('Erro salvar: ' + (err.message || err)); 
-    } 
-  });
-  
+
   on($('btn-cloud-clearkeys'), 'click', function() { 
     try { 
-      clearKeys(); 
-      $('sb-url').value = ''; 
-      $('sb-key').value = ''; 
-      alert('Credenciais limpas.'); 
+      localStorage.removeItem(FB_CFG_LS);
+      if ($('fb-config')) $('fb-config').value = '';
+      alert('Configuração limpa.'); 
     } catch (err) { 
       alert('Erro limpar: ' + (err.message || err)); 
     } 
   });
-  
-  on($('btn-cloud-push'), 'click', function() {
-    try {
-      if (!supa) { alert('Conecte primeiro.'); return; }
-      var at = loadAll().map(function(r) { return mapLocalToCloud(r, false); });
-      var hi = loadHist().map(function(r) { return mapLocalToCloud(r, true); });
-      supa.from(TABLE).upsert(at.concat(hi), { onConflict: 'om,tag,data' }).then(function(ret) {
-        if (ret.error) { alert('Erro no envio: ' + (ret.error.message || ret.error)); return; }
-        alert('Enviado para a nuvem.');
-      });
-    } catch (err) { 
-      alert('Erro push: ' + (err.message || err)); 
-    }
+
+  on($('btn-cloud-push'), 'click', function() { 
+    try { doPushToFirebase(false); } 
+    catch (err) { alert('Erro push: ' + (err.message || err)); } 
   });
-  
+
+  function pullFromFirebase(cb) {
+    if (!fbDb) { alert('Conecte primeiro.'); return; }
+    var col = getCollectionRef();
+    setCloudState('Baixando…');
+    col.get().then(function(snap) {
+      var atuais = [], hist = [], list = [];
+      snap.forEach(function(doc) {
+        var d = doc.data() || {};
+        list.push(d);
+        (d.is_archived ? hist : atuais).push(mapCloudToLocal(d));
+      });
+      cloudCache = list;
+      saveAll(atuais);
+      saveHist(hist);
+      renderTable();
+      renderHist();
+      updateCharts();
+      setCloudState('Conectado');
+      if (cb) cb();
+    }).catch(function(err) {
+      console.error(err);
+      setCloudState('Offline');
+      alert('Erro ao baixar: ' + (err.message || err));
+    });
+  }
+
   on($('btn-cloud-pull'), 'click', function() {
-    try {
-      if (!supa) { alert('Conecte primeiro.'); return; }
-      supa.from(TABLE).select('*').then(function(ret) {
-        if (ret.error) { alert('Erro ao baixar: ' + (ret.error.message || ret.error)); return; }
-        var data = ret.data || [], atuais = [], hist = [];
-        for (var i = 0; i < data.length; i++) { 
-          var r = data[i]; 
-          (r.is_archived ? hist : atuais).push(mapCloudToLocal(r)); 
-        }
-        saveAll(atuais); 
-        saveHist(hist); 
-        renderTable(); 
-        renderHist(); 
-        updateCharts();
-        alert('Sincronizado.');
-      });
-    } catch (err) { 
-      alert('Erro pull: ' + (err.message || err)); 
-    }
+    pullFromFirebase(function(){ alert('Sincronizado.'); });
   });
-  
+
   on($('btn-cloud-list'), 'click', function() {
-    try {
-      if (!supa) { alert('Conecte primeiro.'); return; }
-      supa.from(TABLE).select('*').then(function(ret) {
-        if (ret.error) { alert('Erro ao listar: ' + (ret.error.message || ret.error)); return; }
-        cloudCache = ret.data || [];
-        renderCloudTable();
-      });
-    } catch (err) { 
-      alert('Erro listar: ' + (err.message || err)); 
-    }
+    pullFromFirebase(function(){
+      renderCloudTable();
+    });
   });
-  
+
   on($('btn-cloud-rt'), 'click', function() {
     try {
-      if (!supa) { alert('Conecte primeiro.'); return; }
-      if (sub) { alert('Realtime já ativo.'); return; }
-      sub = supa.channel('public:' + TABLE)
-        .on('postgres_changes', { event: '*', schema: 'public', table: TABLE }, function(payload) {
-          console.log('Mudança recebida:', payload);
-          // Auto-sincronizar quando houver mudanças
-          setTimeout(function() {
-            supa.from(TABLE).select('*').then(function(ret) {
-              if (!ret.error) {
-                var data = ret.data || [], atuais = [], hist = [];
-                for (var i = 0; i < data.length; i++) { 
-                  var r = data[i]; 
-                  (r.is_archived ? hist : atuais).push(mapCloudToLocal(r)); 
-                }
-                saveAll(atuais); 
-                saveHist(hist); 
-                renderTable(); 
-                renderHist(); 
-                updateCharts();
-              }
-            });
-          }, 1000);
-        })
-        .subscribe(function(status) {
-          if (status === 'SUBSCRIBED') {
-            setCloudState('Realtime Ativo');
-            alert('Realtime ativado. Mudanças na nuvem serão sincronizadas automaticamente.');
-          }
+      if (!fbDb) { alert('Conecte primeiro.'); return; }
+      if (fbUnsub) { alert('Realtime já ativo.'); return; }
+
+      var col = getCollectionRef();
+      fbUnsub = col.onSnapshot(function(snap) {
+        var atuais = [], hist = [], list = [];
+        snap.forEach(function(doc) {
+          var d = doc.data() || {};
+          list.push(d);
+          (d.is_archived ? hist : atuais).push(mapCloudToLocal(d));
         });
-    } catch (err) { 
-      alert('Erro realtime: ' + (err.message || err)); 
-    }
-  });
-  
-  on($('btn-cloud-ping'), 'click', function() {
-    try {
-      if (!supa) { alert('Conecte primeiro.'); return; }
-      supa.from(TABLE).select('*', { count: 'exact', head: true }).then(function(ret) {
-        if (ret.error) { alert('Erro no teste: ' + (ret.error.message || ret.error)); return; }
-        alert('Conexão OK. Registros na nuvem: ' + (ret.count || 0));
+        cloudCache = list;
+
+        // Atualiza local
+        // (usa os wrappers de saveAll/saveHist que já tentam auto-push - mas aqui é só pull; desliga auto-push momentaneamente)
+        var old = localStorage.getItem(AUTO_SYNC_LS);
+        localStorage.setItem(AUTO_SYNC_LS, '0');
+        saveAll(atuais);
+        saveHist(hist);
+        localStorage.setItem(AUTO_SYNC_LS, old == null ? '1' : old);
+
+        renderTable();
+        renderHist();
+        updateCharts();
+        renderCloudTable();
+      }, function(err) {
+        console.error(err);
+        setCloudState('Offline');
+        alert('Erro realtime: ' + (err.message || err));
+        disconnectRealtime();
       });
-    } catch (err) { 
-      alert('Erro ping: ' + (err.message || err)); 
+
+      setCloudState('Realtime Ativo');
+      alert('Realtime ativado. Mudanças na nuvem serão sincronizadas automaticamente.');
+    } catch (err) {
+      alert('Erro realtime: ' + (err.message || err));
     }
   });
 
-  function renderCloudTable() {
+  on($('btn-cloud-ping'), 'click', function() {
+    try {
+      if (!fbDb) { alert('Conecte primeiro.'); return; }
+      var col = getCollectionRef();
+      col.limit(1).get().then(function() {
+        alert('Conexão OK.');
+      }).catch(function(err) {
+        alert('Erro no teste: ' + (err.message || err));
+      });
+    } catch (err) {
+      alert('Erro ping: ' + (err.message || err));
+    }
+  });
+function renderCloudTable() {
     var tb = $('tb-cloud'); 
     if (!tb) return; 
     tb.innerHTML = '';
@@ -2796,12 +2628,10 @@ var parsed = [];
 
   // Inicialização
   function init() {
-    // Carregar credenciais salvas
-    var keys = loadKeys();
-    if (keys.url) $('sb-url').value = keys.url;
-    if (keys.key) $('sb-key').value = keys.key;
-    
-    // Carregar estado do auto-archive
+    // Carregar configuração Firebase salva
+    var cfg = loadFbCfg();
+    if ($('fb-config') && cfg && Object.keys(cfg).length) $('fb-config').value = JSON.stringify(cfg, null, 2);
+// Carregar estado do auto-archive
     $('auto-archive').checked = loadAuto();
     
     // Renderizar dados existentes
@@ -2823,77 +2653,6 @@ var parsed = [];
   }
 }
 });
-</script>
-<script>
-(function(){
-  function has(fn){ return typeof fn === "function"; }
-
-  // Aguarda o script principal declarar as funções
-  var tries = 0;
-  var t = setInterval(function(){
-    tries++;
-
-    // funções do app (no arquivo original elas existem no escopo global)
-    var ok = has(window.loadAll) && has(window.saveAll) && has(window.loadHist) && has(window.saveHist)
-          && has(window.renderTable) && has(window.renderHist) && has(window.updateCharts);
-
-    if (!ok && tries < 80) return;
-    clearInterval(t);
-
-    // hooks para o Firebase acessar dados do app
-    window.__limpezaHooks = {
-      getCur: function(){ return window.loadAll(); },
-      getHist: function(){ return window.loadHist(); },
-      setCur: function(arr){ window.saveAll(Array.isArray(arr)?arr:[]); },
-      setHist: function(arr){ window.saveHist(Array.isArray(arr)?arr:[]); },
-      refresh: function(){
-        try { window.renderTable(); } catch(e){}
-        try { window.renderHist(); } catch(e){}
-        try { window.rebuildEquipCheckboxes && window.rebuildEquipCheckboxes(); } catch(e){}
-        try { window.updateCharts(); } catch(e){}
-      }
-    };
-
-    // Wrap saveAll/saveHist para disparar sync (debounce)
-    if (!window.saveAll.__fbWrapped){
-      var _saveAll = window.saveAll;
-      window.saveAll = function(v){
-        var r = _saveAll.call(this, v);
-        if (window.firebaseCloud) window.firebaseCloud.schedulePush("cur");
-        return r;
-      };
-      window.saveAll.__fbWrapped = true;
-    }
-
-    if (!window.saveHist.__fbWrapped){
-      var _saveHist = window.saveHist;
-      window.saveHist = function(v){
-        var r = _saveHist.call(this, v);
-        if (window.firebaseCloud) window.firebaseCloud.schedulePush("hist");
-        return r;
-      };
-      window.saveHist.__fbWrapped = true;
-    }
-
-    // Pull once ao abrir (Firebase -> local) sem disparar push
-    if (window.firebaseCloud && window.firebaseCloud.pullOnce){
-      window.firebaseCloud.pullOnce().then(function(remote){
-        if (!remote) return;
-        var cur = Array.isArray(remote.cur) ? remote.cur : [];
-        var hist = Array.isArray(remote.hist) ? remote.hist : [];
-        window.firebaseCloud.beginRemoteApply && window.firebaseCloud.beginRemoteApply();
-        try {
-          window.saveAll(cur);
-          window.saveHist(hist);
-        } finally {
-          window.firebaseCloud.endRemoteApply && window.firebaseCloud.endRemoteApply();
-        }
-        window.__limpezaHooks.refresh();
-        if (window.firebaseCloud && window.firebaseCloud.setState) window.firebaseCloud.setState("Sincronizado");
-      });
-    }
-  }, 250);
-})();
 </script>
 </body>
 </html>
