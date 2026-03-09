@@ -2654,5 +2654,110 @@ function renderCloudTable() {
 }
 });
 </script>
+  <!-- SENSOR PORTAL - LIMPEZA -->
+<script>
+(function(){
+
+const SISTEMA_ID = "limpeza";
+
+function getFirebaseApp(){
+
+  let cfg = null;
+
+  try{
+    cfg = JSON.parse(localStorage.getItem("fb_cfg_limpeza_v1") || "{}");
+  }catch(e){}
+
+  if(!cfg || !cfg.apiKey){
+    console.warn("Firebase config não encontrado para sensor limpeza");
+    return null;
+  }
+
+  const APP_NAME = "sensorPortalLimpeza";
+
+  try{
+
+    const existing = firebase.apps.find(a=>a.name===APP_NAME);
+    if(existing) return existing;
+
+    return firebase.initializeApp(cfg, APP_NAME);
+
+  }catch(e){
+    console.error("Erro iniciar app sensor",e);
+    return null;
+  }
+}
+
+function coletarDados(){
+
+  let pendente=0;
+  let andamento=0;
+  let concluida=0;
+
+  try{
+
+    if(window.chStatus){
+
+      const d = window.chStatus.data.datasets[0].data;
+
+      pendente = Number(d[0]||0);
+      andamento = Number(d[1]||0);
+      concluida = Number(d[2]||0);
+    }
+
+  }catch(e){}
+
+  const total = pendente + andamento + concluida;
+
+  const gauge = total>0 ? (concluida/total)*100 : 0;
+
+  return {
+
+    sistema:SISTEMA_ID,
+
+    valores:[
+      Number(gauge.toFixed(1)),
+      pendente,
+      andamento,
+      concluida
+    ],
+
+    dadosCompletos:{
+      pendente,
+      andamento,
+      concluida,
+      percentualConclusao:Number(gauge.toFixed(1))
+    },
+
+    timestamp:Date.now()
+  }
+}
+
+function enviar(){
+
+  const app = getFirebaseApp();
+
+  if(!app) return;
+
+  const db = app.database();
+
+  const payload = coletarDados();
+
+  db.ref("sensores/"+SISTEMA_ID)
+  .set(payload)
+  .then(()=>{
+    console.log("🟢 Sensor Limpeza ativo",payload);
+  })
+  .catch(err=>{
+    console.error("Erro sensor limpeza",err);
+  });
+
+}
+
+setTimeout(enviar,5000);
+setInterval(enviar,30000);
+
+})();
+</script>
 </body>
 </html>
